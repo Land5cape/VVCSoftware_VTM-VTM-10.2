@@ -130,6 +130,46 @@ private:
   int                     m_latestDRAPPOC;
   int                     m_lastRasPoc;
 
+#if UW_SSIM_INDEX_COMPUTATION
+
+  double m_dSSIMind[MAX_NUM_COMPONENT];
+
+#endif
+
+#if UW_MS_SSIM_COMPUTATION
+
+  uint32_t m_uiWidthYMS[5];
+  uint32_t m_uiHeightYMS[5];
+
+  uint32_t m_uiWidthCMS[4];
+  uint32_t m_uiHeightCMS[4];
+
+  uint32_t m_uiWidthBdYMS[5];
+  uint32_t m_uiHeightBdYMS[5];
+
+  uint32_t m_uiWidthBdCMS[4];
+  uint32_t m_uiHeightBdCMS[4];
+
+  uint32_t MS_LevelsY;
+  uint32_t MS_LevelsC;
+
+  double*           m_ppiOrgMSPicBufY[5];
+  double*           m_ppiOrgMSPicBufC[4];
+
+  double*           m_ppiRecMSPicBufY[5];
+  double*           m_ppiRecMSPicBufC[4];
+
+  double*           m_ppiOrgBdPicBufMSY[5];
+  double*           m_ppiOrgBdPicBufMSC[4];
+
+  double*           m_ppiRecBdPicBufMSY[5];
+  double*           m_ppiRecBdPicBufMSC[4];
+
+  double m_dSSIMlpfMSY;
+  double m_dSSIMlpfMSC;
+
+#endif
+
   //  Access channel
   EncLib*                 m_pcEncLib;
   EncCfg*                 m_pcCfg;
@@ -205,7 +245,11 @@ public:
   EncGOP();
   virtual ~EncGOP();
 
-  void  create      ();
+  void  create      (
+#if UW_SSIM_COMPUTATION || UW_MS_SSIM_COMPUTATION
+    int iWidth, int iHeight, uint32_t iMaxCUWidth, uint32_t iMaxCUHeight
+#endif
+  );
   void  destroy     ();
 
   void  init        ( EncLib* pcEncLib );
@@ -285,6 +329,15 @@ protected:
                                      const InputColourSpaceConversion snr_conversion, const bool printFrameMSE, double* PSNR_Y
                                     , bool isEncodeLtRef
   );
+#if UW_SSIM_INDEX_COMPUTATION
+  void   xCalculateSSIM_Index(Picture* pcPic, PelUnitBuf cPicD);
+  double xComputeSSIM_Index(Picture* pcPic, PelUnitBuf cPicD, uint32_t uiHeight, uint32_t uiWidth, uint32_t uiWinHeight, uint32_t uiWinWidth, ComponentID compID);
+#endif
+
+#if UW_MS_SSIM_COMPUTATION
+  void   xCalculateMS_SSIM(Picture* pcPic, PelUnitBuf pcPicD);
+  double xComputeMS_SSIM(Picture* pcPic, double* pOrgDS, double* pRecDS, uint32_t uiHeight, uint32_t uiWidth, uint32_t uiWinHeight, uint32_t uiWinWidth, ComponentID compID, bool bLast);
+#endif
 
   uint64_t xFindDistortionPlane(const CPelBuf& pic0, const CPelBuf& pic1, const uint32_t rshift
 #if ENABLE_QPA

@@ -174,14 +174,143 @@ EncGOP::~EncGOP()
 
 /** Create list to contain pointers to CTU start addresses of slice.
  */
-void  EncGOP::create()
+void  EncGOP::create(
+#if UW_SSIM_COMPUTATION || UW_MS_SSIM_COMPUTATION
+  int iWidth, int iHeight, uint32_t iMaxCUWidth, uint32_t iMaxCUHeight
+#endif
+)
 {
   m_bLongtermTestPictureHasBeenCoded = 0;
   m_bLongtermTestPictureHasBeenCoded2 = 0;
+#if UW_MS_SSIM_COMPUTATION
+
+  uint32_t uiDSf_MS = 2;
+
+  int i;
+
+  double dWidthYMS = iWidth;
+  double dHeightYMS = iHeight;
+
+  m_uiWidthYMS[0] = iWidth;
+  m_uiHeightYMS[0] = iHeight;
+
+  m_uiWidthBdYMS[0] = m_uiWidthYMS[0] + uiDSf_MS - 1;
+  m_uiHeightBdYMS[0] = m_uiHeightYMS[0] + uiDSf_MS - 1;
+
+  double  dWidthCMS = (iWidth >> 1);
+  double  dHeightCMS = (iHeight >> 1);
+
+  m_uiWidthCMS[0] = (iWidth >> 1);
+  m_uiHeightCMS[0] = (iHeight >> 1);
+
+  m_uiWidthBdCMS[0] = m_uiWidthCMS[0] + uiDSf_MS - 1;
+  m_uiHeightBdCMS[0] = m_uiHeightCMS[0] + uiDSf_MS - 1;
+
+  MS_LevelsY = 5;
+  MS_LevelsC = 4;
+
+  m_ppiOrgBdPicBufMSY[0] = (double*)xMalloc(double, (m_uiWidthBdYMS[0])*(m_uiHeightBdYMS[0]));
+  m_ppiRecBdPicBufMSY[0] = (double*)xMalloc(double, (m_uiWidthBdYMS[0])*(m_uiHeightBdYMS[0]));
+
+  m_ppiOrgMSPicBufY[0] = (double*)xMalloc(double, m_uiWidthYMS[0] * m_uiHeightYMS[0]);
+  m_ppiRecMSPicBufY[0] = (double*)xMalloc(double, m_uiWidthYMS[0] * m_uiHeightYMS[0]);
+
+  for (i = 1; i < MS_LevelsY; i++)
+  {
+    dWidthYMS /= uiDSf_MS;
+    dHeightYMS /= uiDSf_MS;
+    m_uiWidthYMS[i] = (uint32_t)floor(dWidthYMS);
+    m_uiHeightYMS[i] = (uint32_t)floor(dHeightYMS);
+
+    m_uiWidthBdYMS[i] = m_uiWidthYMS[i] + uiDSf_MS - 1;
+    m_uiHeightBdYMS[i] = m_uiHeightYMS[i] + uiDSf_MS - 1;
+
+    m_ppiOrgBdPicBufMSY[i] = (double*)xMalloc(double, (m_uiWidthBdYMS[i])*(m_uiHeightBdYMS[i]));
+    m_ppiRecBdPicBufMSY[i] = (double*)xMalloc(double, (m_uiWidthBdYMS[i])*(m_uiHeightBdYMS[i]));
+
+    m_ppiOrgMSPicBufY[i] = (double*)xMalloc(double, m_uiWidthYMS[i] * m_uiHeightYMS[i]);
+    m_ppiRecMSPicBufY[i] = (double*)xMalloc(double, m_uiWidthYMS[i] * m_uiHeightYMS[i]);
+  }
+
+  m_ppiOrgBdPicBufMSC[0] = (double*)xMalloc(double, (m_uiWidthCMS[0] + uiDSf_MS - 1)*(m_uiHeightCMS[0] + uiDSf_MS - 1));
+  m_ppiRecBdPicBufMSC[0] = (double*)xMalloc(double, (m_uiWidthCMS[0] + uiDSf_MS - 1)*(m_uiHeightCMS[0] + uiDSf_MS - 1));
+
+  m_ppiOrgMSPicBufC[0] = (double*)xMalloc(double, m_uiWidthCMS[0] * m_uiHeightCMS[0]);
+  m_ppiRecMSPicBufC[0] = (double*)xMalloc(double, m_uiWidthCMS[0] * m_uiHeightCMS[0]);
+
+
+  for (i = 1; i < MS_LevelsC; i++)
+  {
+    dWidthCMS /= uiDSf_MS;
+    dHeightCMS /= uiDSf_MS;
+    m_uiWidthCMS[i] = (uint32_t)floor(dWidthCMS);
+    m_uiHeightCMS[i] = (uint32_t)floor(dHeightCMS);
+
+    m_uiWidthBdCMS[i] = m_uiWidthCMS[i] + uiDSf_MS - 1;
+    m_uiHeightBdCMS[i] = m_uiHeightCMS[i] + uiDSf_MS - 1;
+
+    m_ppiOrgBdPicBufMSC[i] = (double*)xMalloc(double, (m_uiWidthBdCMS[i])*(m_uiHeightBdCMS[i]));
+    m_ppiRecBdPicBufMSC[i] = (double*)xMalloc(double, (m_uiWidthBdCMS[i])*(m_uiHeightBdCMS[i]));
+
+    m_ppiOrgMSPicBufC[i] = (double*)xMalloc(double, m_uiWidthCMS[i] * m_uiHeightCMS[i]);
+    m_ppiRecMSPicBufC[i] = (double*)xMalloc(double, m_uiWidthCMS[i] * m_uiHeightCMS[i]);
+  }
+
+  m_dSSIMlpfMSY = 0.25;
+  m_dSSIMlpfMSC = 0.25;
+#endif
 }
 
 void  EncGOP::destroy()
 {
+#if UW_MS_SSIM_COMPUTATION
+
+  if (m_ppiOrgMSPicBufY[0]) { xFree(m_ppiOrgMSPicBufY[0]);		        		m_ppiOrgMSPicBufY[0] = NULL; }
+  if (m_ppiOrgMSPicBufY[1]) { xFree(m_ppiOrgMSPicBufY[1]);                m_ppiOrgMSPicBufY[1] = NULL; }
+  if (m_ppiOrgMSPicBufY[2]) { xFree(m_ppiOrgMSPicBufY[2]);                m_ppiOrgMSPicBufY[2] = NULL; }
+  if (m_ppiOrgMSPicBufY[3]) { xFree(m_ppiOrgMSPicBufY[3]);                m_ppiOrgMSPicBufY[3] = NULL; }
+  if (m_ppiOrgMSPicBufY[4]) { xFree(m_ppiOrgMSPicBufY[4]);                m_ppiOrgMSPicBufY[4] = NULL; }
+
+  if (m_ppiOrgMSPicBufC[0]) { xFree(m_ppiOrgMSPicBufC[0]);		            m_ppiOrgMSPicBufC[0] = NULL; }
+  if (m_ppiOrgMSPicBufC[1]) { xFree(m_ppiOrgMSPicBufC[1]);                m_ppiOrgMSPicBufC[1] = NULL; }
+  if (m_ppiOrgMSPicBufC[2]) { xFree(m_ppiOrgMSPicBufC[2]);                m_ppiOrgMSPicBufC[2] = NULL; }
+  if (m_ppiOrgMSPicBufC[3]) { xFree(m_ppiOrgMSPicBufC[3]);                m_ppiOrgMSPicBufC[3] = NULL; }
+
+  if (m_ppiRecMSPicBufY[0]) { xFree(m_ppiRecMSPicBufY[0]);		            m_ppiRecMSPicBufY[0] = NULL; }
+  if (m_ppiRecMSPicBufY[1]) { xFree(m_ppiRecMSPicBufY[1]);                m_ppiRecMSPicBufY[1] = NULL; }
+  if (m_ppiRecMSPicBufY[2]) { xFree(m_ppiRecMSPicBufY[2]);                m_ppiRecMSPicBufY[2] = NULL; }
+  if (m_ppiRecMSPicBufY[3]) { xFree(m_ppiRecMSPicBufY[3]);                m_ppiRecMSPicBufY[3] = NULL; }
+  if (m_ppiRecMSPicBufY[4]) { xFree(m_ppiRecMSPicBufY[4]);                m_ppiRecMSPicBufY[4] = NULL; }
+
+  if (m_ppiRecMSPicBufC[0]) { xFree(m_ppiRecMSPicBufC[0]);		            m_ppiRecMSPicBufC[0] = NULL; }
+  if (m_ppiRecMSPicBufC[1]) { xFree(m_ppiRecMSPicBufC[1]);                m_ppiRecMSPicBufC[1] = NULL; }
+  if (m_ppiRecMSPicBufC[2]) { xFree(m_ppiRecMSPicBufC[2]);                m_ppiRecMSPicBufC[2] = NULL; }
+  if (m_ppiRecMSPicBufC[3]) { xFree(m_ppiRecMSPicBufC[3]);                m_ppiRecMSPicBufC[3] = NULL; }
+
+  if (m_ppiOrgBdPicBufMSY[0]) { xFree(m_ppiOrgBdPicBufMSY[0]);	              m_ppiOrgBdPicBufMSY[0] = NULL; }
+  if (m_ppiOrgBdPicBufMSY[1]) { xFree(m_ppiOrgBdPicBufMSY[1]);                m_ppiOrgBdPicBufMSY[1] = NULL; }
+  if (m_ppiOrgBdPicBufMSY[2]) { xFree(m_ppiOrgBdPicBufMSY[2]);                m_ppiOrgBdPicBufMSY[2] = NULL; }
+  if (m_ppiOrgBdPicBufMSY[3]) { xFree(m_ppiOrgBdPicBufMSY[3]);                m_ppiOrgBdPicBufMSY[3] = NULL; }
+  if (m_ppiOrgBdPicBufMSY[4]) { xFree(m_ppiOrgBdPicBufMSY[4]);                m_ppiOrgBdPicBufMSY[4] = NULL; }
+
+  if (m_ppiOrgBdPicBufMSC[0]) { xFree(m_ppiOrgBdPicBufMSC[0]);                m_ppiOrgBdPicBufMSC[0] = NULL; }
+  if (m_ppiOrgBdPicBufMSC[1]) { xFree(m_ppiOrgBdPicBufMSC[1]);                m_ppiOrgBdPicBufMSC[1] = NULL; }
+  if (m_ppiOrgBdPicBufMSC[2]) { xFree(m_ppiOrgBdPicBufMSC[2]);                m_ppiOrgBdPicBufMSC[2] = NULL; }
+  if (m_ppiOrgBdPicBufMSC[3]) { xFree(m_ppiOrgBdPicBufMSC[3]);                m_ppiOrgBdPicBufMSC[3] = NULL; }
+
+  if (m_ppiRecBdPicBufMSY[0]) { xFree(m_ppiRecBdPicBufMSY[0]);                m_ppiRecBdPicBufMSY[0] = NULL; }
+  if (m_ppiRecBdPicBufMSY[1]) { xFree(m_ppiRecBdPicBufMSY[1]);                m_ppiRecBdPicBufMSY[1] = NULL; }
+  if (m_ppiRecBdPicBufMSY[2]) { xFree(m_ppiRecBdPicBufMSY[2]);                m_ppiRecBdPicBufMSY[2] = NULL; }
+  if (m_ppiRecBdPicBufMSY[3]) { xFree(m_ppiRecBdPicBufMSY[3]);                m_ppiRecBdPicBufMSY[3] = NULL; }
+  if (m_ppiRecBdPicBufMSY[4]) { xFree(m_ppiRecBdPicBufMSY[4]);                m_ppiRecBdPicBufMSY[4] = NULL; }
+
+  if (m_ppiRecBdPicBufMSC[0]) { xFree(m_ppiRecBdPicBufMSC[0]);                m_ppiRecBdPicBufMSC[0] = NULL; }
+  if (m_ppiRecBdPicBufMSC[1]) { xFree(m_ppiRecBdPicBufMSC[1]);                m_ppiRecBdPicBufMSC[1] = NULL; }
+  if (m_ppiRecBdPicBufMSC[2]) { xFree(m_ppiRecBdPicBufMSC[2]);                m_ppiRecBdPicBufMSC[2] = NULL; }
+  if (m_ppiRecBdPicBufMSC[3]) { xFree(m_ppiRecBdPicBufMSC[3]);                m_ppiRecBdPicBufMSC[3] = NULL; }
+
+#endif
+
 #if W0038_DB_OPT
   if (m_pcDeblockingTempPicYuv)
   {
@@ -3524,6 +3653,13 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       double PSNR_Y;
       xCalculateAddPSNRs(isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, encTime, snr_conversion, printFrameMSE, &PSNR_Y, isEncodeLtRef );
 
+#if UW_SSIM_INDEX_COMPUTATION
+      xCalculateSSIM_Index(pcPic, pcPic->getRecoBuf());
+#endif
+#if UW_MS_SSIM_COMPUTATION
+      xCalculateMS_SSIM(pcPic, pcPic->getRecoBuf());
+#endif
+
 
       xWriteTrailingSEIMessages(trailingSeiMessages, accessUnit, pcSlice->getTLayer());
 
@@ -4042,6 +4178,477 @@ double EncGOP::xFindDistortionPlaneWPSNR(const CPelBuf& pic0, const CPelBuf& pic
 
   return uiTotalDiffWPSNR;
 }
+#endif
+
+#if UW_MS_SSIM_COMPUTATION
+
+double EncGOP::xComputeMS_SSIM(Picture* pcPic, double* pOrgDS, double* pRecDS, uint32_t uiHeight, uint32_t uiWidth, uint32_t uiWinHeight, uint32_t uiWinWidth, ComponentID compID, bool bLast)
+{
+  const SPS&         sps = *pcPic->cs->sps;
+  const uint32_t bitDepth = sps.getBitDepth(toChannelType(compID));
+
+  double C1, C2;
+  double dLocSSIM, dLocMeanRef, dLocMeanRec, dLocVarRef, dLocVarRec, dLocCovar, Num1, Num2, Den1, Den2, dMSSIM = 0;
+  uint32_t i, j, x, y, uiFiltInd;
+  uint32_t uiNumWin = (uiHeight - uiWinHeight + 1)*(uiWidth - uiWinWidth + 1);
+  uint32_t uiMaxval = 256 * (1 << (bitDepth - 8)) - 1;
+  C1 = K1 * K1 * uiMaxval* uiMaxval;
+  C2 = K2 * K2 * uiMaxval* uiMaxval;
+
+  double*  pOrgDSPel = pOrgDS;
+  double*  pRecDSPel = pRecDS;
+
+  for (j = 0; j <= uiHeight - uiWinHeight; j++)
+  {
+    for (i = 0; i <= uiWidth - uiWinWidth; i++)
+    {
+      dLocMeanRef = 0;
+      dLocMeanRec = 0;
+      dLocVarRef = 0;
+      dLocVarRec = 0;
+      dLocCovar = 0;
+      pOrgDSPel = pOrgDS + i + uiWidth * j;
+      pRecDSPel = pRecDS + i + uiWidth * j;
+      uiFiltInd = 0;
+
+      for (y = 0; y < uiWinHeight; y++)
+      {
+        for (x = 0; x < uiWinWidth; x++)
+        {
+
+          dLocMeanRef += pOrgDSPel[x] * GausFilt11[uiFiltInd];
+          dLocMeanRec += pRecDSPel[x] * GausFilt11[uiFiltInd];
+          dLocVarRef += pOrgDSPel[x] * pOrgDSPel[x] * GausFilt11[uiFiltInd];
+          dLocVarRec += pRecDSPel[x] * pRecDSPel[x] * GausFilt11[uiFiltInd];
+          dLocCovar += pOrgDSPel[x] * pRecDSPel[x] * GausFilt11[uiFiltInd];
+
+          uiFiltInd++;
+        }
+        pOrgDSPel += uiWidth;
+        pRecDSPel += uiWidth;
+      }
+
+      dLocVarRef = dLocVarRef - dLocMeanRef * dLocMeanRef;
+      dLocVarRec = dLocVarRec - dLocMeanRec * dLocMeanRec;
+      dLocCovar = dLocCovar - dLocMeanRef * dLocMeanRec;
+
+      Num1 = 2.0 * dLocMeanRef * dLocMeanRec + C1;
+      Num2 = 2.0 * dLocCovar + C2;
+      Den1 = dLocMeanRef * dLocMeanRef + dLocMeanRec * dLocMeanRec + C1;
+      Den2 = dLocVarRef + dLocVarRec + C2;
+
+      if (bLast == true)
+      {
+        dLocSSIM = (Num1 * Num2) / (Den1 * Den2);
+      }
+      else
+      {
+        dLocSSIM = Num2 / Den2;
+      }
+
+      dMSSIM += dLocSSIM;
+
+    }
+  }
+
+  dMSSIM /= (double)uiNumWin;
+
+  return dMSSIM;
+
+}
+
+void  EncGOP::xCalculateMS_SSIM(Picture* pcPic, PelUnitBuf cPicD)
+{
+
+  const SPS&         sps = *pcPic->cs->sps;
+  const CPelUnitBuf& pic = cPicD;
+
+  //  const CPelUnitBuf& org = (conversion != IPCOLOURSPACE_UNCHANGED) ? pcPic->getPicYuvTrueOrg()->getBuf() : pcPic->getPicYuvOrg()->getBuf();
+  const CPelUnitBuf& org = (sps.getUseLmcs() || m_pcCfg->getGopBasedTemporalFilterEnabled()) ? pcPic->getTrueOrigBuf() : pcPic->getOrigBuf();
+
+  int i, j, k;
+
+  uint32_t   uiWinWidth = 11;
+  uint32_t   uiWinHeight = 11;
+
+  bool bLast;
+
+  double dMS_SSIMval[MAX_NUM_COMPONENT];
+
+  for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    dMS_SSIMval[i] = pow(m_dSSIMind[i], dWeightY_MS_SSIM[0]);
+  }
+
+  //===== calculate MS-SSIM =====
+  const ChromaFormat formatD = pic.chromaFormat;
+  const ChromaFormat format = sps.getChromaFormatIdc();
+
+  const bool bPicIsField = pcPic->fieldPic;
+  const Slice*  pcSlice = pcPic->slices[0];
+
+  PelStorage upscaledRec;
+
+  if (m_pcEncLib->isResChangeInClvsEnabled())
+  {
+    const CPelBuf& upscaledOrg = (sps.getUseLmcs() || m_pcCfg->getGopBasedTemporalFilterEnabled()) ? pcPic->M_BUFS(0, PIC_TRUE_ORIGINAL_INPUT).get(COMPONENT_Y) : pcPic->M_BUFS(0, PIC_ORIGINAL_INPUT).get(COMPONENT_Y);
+    upscaledRec.create(pic.chromaFormat, Area(Position(), upscaledOrg));
+
+    int xScale, yScale;
+    // it is assumed that full resolution picture PPS has ppsId 0
+    const PPS* pps = m_pcEncLib->getPPS(0);
+    CU::getRprScaling(&sps, pps, pcPic, xScale, yScale);
+    std::pair<int, int> scalingRatio = std::pair<int, int>(xScale, yScale);
+
+    Picture::rescalePicture(scalingRatio, pic, pcPic->getScalingWindow(), upscaledRec, pps->getScalingWindow(), format, sps.getBitDepths(), false, false, sps.getHorCollocatedChromaFlag(), sps.getVerCollocatedChromaFlag());
+  }
+
+  double dSSIMval[MAX_NUM_COMPONENT];
+
+  // 遍历三个通道 
+  for (int comp = 0; comp < ::getNumberValidComponents(formatD); comp++)
+  {
+    const ComponentID compID = ComponentID(comp);
+    const CPelBuf&    p = pic.get(compID);
+    const CPelBuf&    o = org.get(compID);
+
+    CHECK(!(p.width == o.width), "Unspecified error");
+    CHECK(!(p.height == o.height), "Unspecified error");
+
+    int padX = m_pcEncLib->getPad(0);
+    int padY = m_pcEncLib->getPad(1);
+
+    // when RPR is enabled, picture padding is picture specific due to possible different picture resoluitons, however only full resolution padding is stored in EncLib
+    // get per picture padding from the conformance window, in this case if conformance window is set not equal to the padding then PSNR results may be inaccurate
+    if (m_pcEncLib->isResChangeInClvsEnabled())
+    {
+      Window& conf = pcPic->getConformanceWindow();
+      padX = conf.getWindowRightOffset() * SPS::getWinUnitX(format);
+      padY = conf.getWindowBottomOffset() * SPS::getWinUnitY(format);
+    }
+
+    const uint32_t width = p.width - (padX >> ::getComponentScaleX(compID, format));
+    const uint32_t height = p.height - (padY >> (!!bPicIsField + ::getComponentScaleY(compID, format)));
+
+    const Pel*  pOrg = o.buf;
+    const Pel*  pRec = p.buf;
+
+    int   oStride = o.stride;
+    int   pStride = p.stride;
+
+
+    uint32_t* uiWidthMS;
+    uint32_t* uiHeightMS;
+    uint32_t* uiWidthBdMS;
+    uint32_t* uiHeightBdMS;
+    uint32_t  MS_Levels;
+    double**  ppiOrgMSPicBuf;
+    double**  ppiRecMSPicBuf;
+    double**  ppiOrgBdPicBufMS;
+    double**  ppiRecBdPicBufMS;
+    double    dSSIMlpfMS;
+
+    if (compID == COMPONENT_Y) {
+      uiWidthMS = m_uiWidthYMS;
+      uiHeightMS = m_uiHeightYMS;
+      uiWidthBdMS = m_uiWidthBdYMS;
+      uiHeightBdMS = m_uiHeightBdYMS;
+      MS_Levels = MS_LevelsY;
+      ppiOrgMSPicBuf = m_ppiOrgMSPicBufY;
+      ppiRecMSPicBuf = m_ppiRecMSPicBufY;
+      ppiOrgBdPicBufMS = m_ppiOrgBdPicBufMSY;
+      ppiRecBdPicBufMS = m_ppiRecBdPicBufMSY;
+      dSSIMlpfMS = m_dSSIMlpfMSY;
+    }
+    else if (compID == COMPONENT_Cb || compID == COMPONENT_Cr){
+      uiWidthMS = m_uiWidthCMS;
+      uiHeightMS = m_uiHeightCMS;
+      uiWidthBdMS = m_uiWidthBdCMS;
+      uiHeightBdMS = m_uiHeightBdCMS;
+      MS_Levels = MS_LevelsC;
+      ppiOrgMSPicBuf = m_ppiOrgMSPicBufC;
+      ppiRecMSPicBuf = m_ppiRecMSPicBufC;
+      ppiOrgBdPicBufMS = m_ppiOrgBdPicBufMSC;
+      ppiRecBdPicBufMS = m_ppiRecBdPicBufMSC;
+      dSSIMlpfMS = m_dSSIMlpfMSC;
+    }
+
+
+    for (j = 0; j <= uiHeightMS[0] - 1; j++)
+    {
+      for (i = 0; i <= uiWidthMS[0] - 1; i++)
+      {
+        ppiOrgMSPicBuf[0][i + uiWidthMS[0] * j] = pOrg[i + oStride * j];
+        ppiRecMSPicBuf[0][i + uiWidthMS[0] * j] = pRec[i + pStride * j];
+      }
+    }
+
+    bLast = false;
+    for (k = 1; k < MS_Levels; k++)
+    {
+      if (k == MS_Levels - 1)
+        bLast = true;
+
+      for (j = 0; j <= uiHeightMS[k - 1] - 1; j++)
+      {
+        for (i = 0; i <= uiWidthMS[k - 1] - 1; i++)
+        {
+          ppiOrgBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * j] = ppiOrgMSPicBuf[k - 1][i + uiWidthMS[k - 1] * j];
+          ppiRecBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * j] = ppiRecMSPicBuf[k - 1][i + uiWidthMS[k - 1] * j];
+        }
+      }
+
+      i = uiWidthBdMS[k - 1] - 1;
+      for (j = 0; j <= uiHeightBdMS[k - 1] - 1; j++)
+      {
+        ppiOrgBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * j] = ppiOrgBdPicBufMS[k - 1][i - 1 + uiWidthBdMS[k - 1] * j];
+        ppiRecBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * j] = ppiRecBdPicBufMS[k - 1][i - 1 + uiWidthBdMS[k - 1] * j];
+      }
+
+      j = uiHeightBdMS[k - 1] - 1;
+
+      for (i = 0; i <= uiWidthBdMS[k - 1] - 1; i++)
+      {
+        ppiOrgBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * j] = ppiOrgBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * (j - 1)];
+        ppiRecBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * j] = ppiRecBdPicBufMS[k - 1][i + uiWidthBdMS[k - 1] * (j - 1)];
+      }
+
+      double*  pOrgBdPel = ppiOrgBdPicBufMS[k - 1];
+      double*  pRecBdPel = ppiRecBdPicBufMS[k - 1];
+      double*  pOrgDSPel = ppiOrgMSPicBuf[k];
+      double*  pRecDSPel = ppiRecMSPicBuf[k];
+
+      for (j = 0; j <= uiHeightMS[k - 1] - 2; j += 2)
+      {
+        for (i = 0; i <= uiWidthMS[k - 1] - 2; i += 2)
+        {
+          pOrgBdPel = ppiOrgBdPicBufMS[k - 1] + i + uiWidthBdMS[k - 1] * j;
+          pRecBdPel = ppiRecBdPicBufMS[k - 1] + i + uiWidthBdMS[k - 1] * j;
+
+          pOrgDSPel[0] = (pOrgBdPel[0] + pOrgBdPel[1] + pOrgBdPel[uiWidthBdMS[k - 1]] + pOrgBdPel[uiWidthBdMS[k - 1] + 1])*dSSIMlpfMS;
+          pRecDSPel[0] = (pRecBdPel[0] + pRecBdPel[1] + pRecBdPel[uiWidthBdMS[k - 1]] + pRecBdPel[uiWidthBdMS[k - 1] + 1])*dSSIMlpfMS;
+
+          pOrgDSPel++;
+          pRecDSPel++;
+        }
+      }
+
+      dSSIMval[comp] = xComputeMS_SSIM(pcPic, ppiOrgMSPicBuf[k], ppiRecMSPicBuf[k], uiHeightMS[k], uiWidthMS[k], uiWinHeight, uiWinWidth, compID, bLast);
+
+      const double* dWeight_MS_SSIM;
+      if (compID == COMPONENT_Y) {
+        dWeight_MS_SSIM = dWeightY_MS_SSIM;
+      }
+      else if (compID == COMPONENT_Cb || compID == COMPONENT_Cr) {
+        dWeight_MS_SSIM = dWeightC_MS_SSIM;
+      }
+
+      dMS_SSIMval[comp] = dMS_SSIMval[comp] * pow(dSSIMval[comp], dWeight_MS_SSIM[k]);
+    }
+  }
+
+  //===== add result MS-SSIM =====
+  m_gcAnalyzeAll.addResultMS_SSIM(dMS_SSIMval);
+
+  if (pcSlice->isIntra())
+  {
+    m_gcAnalyzeI.addResultMS_SSIM(dMS_SSIMval);
+  }
+  if (pcSlice->isInterP())
+  {
+    m_gcAnalyzeP.addResultMS_SSIM(dMS_SSIMval);
+  }
+  if (pcSlice->isInterB())
+  {
+    m_gcAnalyzeB.addResultMS_SSIM(dMS_SSIMval);
+  }
+
+  msg(NOTICE, "[MS-SSIM Y %6.4lf    MS-SSIM U %6.4lf     MS-SSIM V %6.4lf]  ", dMS_SSIMval[COMPONENT_Y], dMS_SSIMval[COMPONENT_Cb], dMS_SSIMval[COMPONENT_Cr]);
+
+}
+
+#endif
+
+#if UW_SSIM_INDEX_COMPUTATION
+
+double EncGOP::xComputeSSIM_Index(Picture* pcPic, PelUnitBuf cPicD, uint32_t uiHeight, uint32_t uiWidth, uint32_t uiWinHeight, uint32_t uiWinWidth, ComponentID compID)
+{
+  const SPS&         sps = *pcPic->cs->sps;
+  
+  //  const CPelUnitBuf& org = (conversion != IPCOLOURSPACE_UNCHANGED) ? pcPic->getPicYuvTrueOrg()->getBuf() : pcPic->getPicYuvOrg()->getBuf();
+  const CPelUnitBuf& org = (sps.getUseLmcs() || m_pcCfg->getGopBasedTemporalFilterEnabled()) ? pcPic->getTrueOrigBuf() : pcPic->getOrigBuf();
+  const CPelUnitBuf& pic = cPicD;
+
+  const CPelBuf& o = org.get(compID);
+  const CPelBuf& p = pic.get(compID);
+
+  // 得到pel类型指针
+  const Pel*  pOrg = o.buf;
+  const Pel*  pRec = p.buf;
+
+  int   oStride = o.stride;
+  int   pStride = p.stride;
+
+  const uint32_t bitDepth = sps.getBitDepth(toChannelType(compID));
+
+  double C1, C2;
+  double dLocSSIM, dLocMeanRef, dLocMeanRec, dLocVarRef, dLocVarRec, dLocCovar, Num1, Num2, Den1, Den2, dMSSIM = 0;
+  uint32_t i, j, x, y, uiFiltInd;
+  uint32_t uiNumWin = (uiHeight - uiWinHeight + 1)*(uiWidth - uiWinWidth + 1);
+  uint32_t uiMaxval = 256 * (1 << (bitDepth - 8)) - 1;
+  C1 = K1 * K1 * uiMaxval* uiMaxval;
+  C2 = K2 * K2 * uiMaxval* uiMaxval;
+
+  const Pel*  pOrgPel = pOrg;
+  const Pel*  pRecPel = pRec;
+
+
+  for (j = 0; j <= uiHeight - uiWinHeight; j++)
+  {
+    for (i = 0; i <= uiWidth - uiWinWidth; i++)
+    {
+      dLocMeanRef = 0;
+      dLocMeanRec = 0;
+      dLocVarRef = 0;
+      dLocVarRec = 0;
+      dLocCovar = 0;
+      pOrgPel = pOrg + i + oStride * j;
+      pRecPel = pRec + i + pStride * j;
+      uiFiltInd = 0;
+
+      for (y = 0; y < uiWinHeight; y++)
+      {
+        for (x = 0; x < uiWinWidth; x++)
+        {
+          dLocMeanRef += pOrgPel[x] * GausFilt11[uiFiltInd];
+          dLocMeanRec += pRecPel[x] * GausFilt11[uiFiltInd];
+          dLocVarRef += pOrgPel[x] * pOrgPel[x] * GausFilt11[uiFiltInd];
+          dLocVarRec += pRecPel[x] * pRecPel[x] * GausFilt11[uiFiltInd];
+          dLocCovar += pOrgPel[x] * pRecPel[x] * GausFilt11[uiFiltInd];
+
+          uiFiltInd++;
+        }
+        pOrgPel += oStride;
+        pRecPel += pStride;
+      }
+
+      dLocVarRef = dLocVarRef - dLocMeanRef * dLocMeanRef;
+      dLocVarRec = dLocVarRec - dLocMeanRec * dLocMeanRec;
+      dLocCovar = dLocCovar - dLocMeanRef * dLocMeanRec;
+
+      Num1 = 2.0 * dLocMeanRef * dLocMeanRec + C1;
+      Num2 = 2.0 * dLocCovar + C2;
+      Den1 = dLocMeanRef * dLocMeanRef + dLocMeanRec * dLocMeanRec + C1;
+      Den2 = dLocVarRef + dLocVarRec + C2;
+
+      dLocSSIM = (Num1 * Num2) / (Den1 * Den2);
+
+      dMSSIM += dLocSSIM;
+
+    }
+  }
+
+  dMSSIM /= (double)uiNumWin;
+  return dMSSIM;
+}
+
+void EncGOP::xCalculateSSIM_Index(Picture* pcPic, PelUnitBuf cPicD)
+{
+  const SPS&         sps = *pcPic->cs->sps;
+  const CPelUnitBuf& pic = cPicD;
+
+  //  const CPelUnitBuf& org = (conversion != IPCOLOURSPACE_UNCHANGED) ? pcPic->getPicYuvTrueOrg()->getBuf() : pcPic->getPicYuvOrg()->getBuf();
+  const CPelUnitBuf& org = (sps.getUseLmcs() || m_pcCfg->getGopBasedTemporalFilterEnabled()) ? pcPic->getTrueOrigBuf() : pcPic->getOrigBuf();
+
+  //===== calculate SSIM =====
+  const ChromaFormat formatD = pic.chromaFormat;
+  const ChromaFormat format = sps.getChromaFormatIdc();
+
+  const bool bPicIsField = pcPic->fieldPic;
+  const Slice*  pcSlice = pcPic->slices[0];
+
+  PelStorage upscaledRec;
+
+  if (m_pcEncLib->isResChangeInClvsEnabled())
+  {
+    const CPelBuf& upscaledOrg = (sps.getUseLmcs() || m_pcCfg->getGopBasedTemporalFilterEnabled()) ? pcPic->M_BUFS(0, PIC_TRUE_ORIGINAL_INPUT).get(COMPONENT_Y) : pcPic->M_BUFS(0, PIC_ORIGINAL_INPUT).get(COMPONENT_Y);
+    upscaledRec.create(pic.chromaFormat, Area(Position(), upscaledOrg));
+
+    int xScale, yScale;
+    // it is assumed that full resolution picture PPS has ppsId 0
+    const PPS* pps = m_pcEncLib->getPPS(0);
+    CU::getRprScaling(&sps, pps, pcPic, xScale, yScale);
+    std::pair<int, int> scalingRatio = std::pair<int, int>(xScale, yScale);
+
+    Picture::rescalePicture(scalingRatio, pic, pcPic->getScalingWindow(), upscaledRec, pps->getScalingWindow(), format, sps.getBitDepths(), false, false, sps.getHorCollocatedChromaFlag(), sps.getVerCollocatedChromaFlag());
+  }
+
+  // 遍历三个通道
+  for (int comp = 0; comp < ::getNumberValidComponents(formatD); comp++)
+  {
+    const ComponentID compID = ComponentID(comp);
+    const CPelBuf&    p = pic.get(compID);
+    const CPelBuf&    o = org.get(compID);
+
+    CHECK(!(p.width == o.width), "Unspecified error");
+    CHECK(!(p.height == o.height), "Unspecified error");
+
+    int padX = m_pcEncLib->getPad(0);
+    int padY = m_pcEncLib->getPad(1);
+
+    // when RPR is enabled, picture padding is picture specific due to possible different picture resoluitons, however only full resolution padding is stored in EncLib
+    // get per picture padding from the conformance window, in this case if conformance window is set not equal to the padding then PSNR results may be inaccurate
+    if (m_pcEncLib->isResChangeInClvsEnabled())
+    {
+      Window& conf = pcPic->getConformanceWindow();
+      padX = conf.getWindowRightOffset() * SPS::getWinUnitX(format);
+      padY = conf.getWindowBottomOffset() * SPS::getWinUnitY(format);
+    }
+
+    const uint32_t width = p.width - (padX >> ::getComponentScaleX(compID, format));
+    const uint32_t height = p.height - (padY >> (!!bPicIsField + ::getComponentScaleY(compID, format)));
+
+    uint32_t   uiWinWidth = 11;
+    uint32_t   uiWinHeight = 11;
+
+    // create new buffers with correct dimensions
+    const CPelBuf recPB(p.bufAt(0, 0), p.stride, width, height);
+    const CPelBuf orgPB(o.bufAt(0, 0), o.stride, width, height);
+    const uint32_t    bitDepth = sps.getBitDepth(toChannelType(compID));
+
+    const uint64_t uiSSDtemp = xFindDistortionPlane(recPB, orgPB, 0);
+
+    const uint32_t maxval = 255 << (bitDepth - 8);
+    const uint32_t size = width * height;
+    const double fRefValue = (double)maxval * maxval * size;
+
+    // 得到计算结果
+    m_dSSIMind[comp] = xComputeSSIM_Index(pcPic, cPicD, height, width, uiWinHeight, uiWinWidth, compID);
+
+  }
+
+
+  //===== add result of SSIM =====
+  m_gcAnalyzeAll.addResultSSIM_Index(m_dSSIMind);
+
+  if (pcSlice->isIntra())
+  {
+    m_gcAnalyzeI.addResultSSIM_Index(m_dSSIMind);
+  }
+  if (pcSlice->isInterP())
+  {
+    m_gcAnalyzeP.addResultSSIM_Index(m_dSSIMind);
+  }
+  if (pcSlice->isInterB())
+  {
+    m_gcAnalyzeB.addResultSSIM_Index(m_dSSIMind);
+  }
+
+  msg(NOTICE, "[SSIM Index Y %6.4lf    SSIM Index U %6.4lf     SSIM Index V %6.4lf]  ", m_dSSIMind[COMPONENT_Y], m_dSSIMind[COMPONENT_Cb], m_dSSIMind[COMPONENT_Cr]);
+
+}
+
+
 #endif
 
 void EncGOP::xCalculateAddPSNRs( const bool isField, const bool isFieldTopFieldFirst, const int iGOPid, Picture* pcPic, const AccessUnit&accessUnit, PicList &rcListPic, const int64_t dEncTime, const InputColourSpaceConversion snr_conversion, const bool printFrameMSE, double* PSNR_Y

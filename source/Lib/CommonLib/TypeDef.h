@@ -38,6 +38,14 @@
 #ifndef __TYPEDEF__
 #define __TYPEDEF__
 
+#define UW_SSIM_INDEX_COMPUTATION           1
+
+#ifdef UW_SSIM_INDEX_COMPUTATION
+
+#define UW_MS_SSIM_COMPUTATION              1// Requires UW_SSIM_INDEX flag turned on
+
+#endif
+
 #ifndef __COMMONDEF__
 #error Include CommonDef.h not TypeDef.h
 

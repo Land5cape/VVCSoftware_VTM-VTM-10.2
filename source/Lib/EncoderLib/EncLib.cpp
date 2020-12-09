@@ -101,7 +101,11 @@ void EncLib::create( const int layerId )
   m_layerId = layerId;
   m_iPOCLast = m_compositeRefEnabled ? -2 : -1;
   // create processing unit classes
-  m_cGOPEncoder.        create( );
+  m_cGOPEncoder.        create(
+#if UW_SSIM_COMPUTATION || UW_MS_SSIM_COMPUTATION
+    getSourceWidth(), getSourceHeight(), getMaxCUWidth(), getMaxCUHeight()
+#endif
+  );
 #if ENABLE_SPLIT_PARALLELISM
 #if ENABLE_SPLIT_PARALLELISM
   m_numCuEncStacks  = m_numSplitThreads == 1 ? 1 : NUM_RESERVERD_SPLIT_JOBS;
