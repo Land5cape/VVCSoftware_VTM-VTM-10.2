@@ -126,7 +126,6 @@ public:
     {
       m_dMS_SSIM_Sum[i] += ssim[i];
     }
-
   }
 #endif
 
@@ -195,7 +194,7 @@ public:
 #endif
   }
 
-
+  // º∆À„PSNRyuv MSEyuv
   void calculateCombinedValues(const ChromaFormat chFmt, double &PSNRyuv, double &MSEyuv, const BitDepths &bitDepths)
   {
     MSEyuv    = 0;
@@ -235,6 +234,7 @@ public:
     PSNRyuv = (MSEyuv == 0) ? 999.99 : 10.0 * log10((maxval * maxval) / MSEyuv);
   }
 
+  // ¥Ú”° ‰≥ˆ
 #if ENABLE_QPA || WCG_WPSNR
   void    printOut( char cDelim, const ChromaFormat chFmt, const bool printMSEBasedSNR, const bool printSequenceMSE, const bool printHexPsnr, const bool printRprPSNR, const BitDepths &bitDepths, const bool useWPSNR = false
 #if JVET_O0756_CALCULATE_HDRMETRICS
@@ -293,7 +293,7 @@ public:
             msg( e_msg_level, "         \tTotal Frames |   "   "Bitrate     "  "Y-WPSNR" );
           } else
 #endif
-          msg( e_msg_level, "         \tTotal Frames |   "   "Bitrate     "  "Y-PSNR" );
+          msg( e_msg_level, "         \tTotal Frames |   "   "Bitrate    "  "Y-PSNR" );
 
           if (printHexPsnr)
           {
@@ -349,10 +349,10 @@ public:
         {
 #if ENABLE_QPA || WCG_WPSNR
           if (useWPSNR) {
-            msg( e_msg_level, "\tTotal Frames |   "   "Bitrate     "  "Y-WPSNR" );
+            msg( e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-WPSNR" );
           } else
 #endif
-          msg( e_msg_level, "\tTotal Frames |   "   "Bitrate     "  "Y-PSNR" );
+          msg( e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-PSNR" );
 
           if (printHexPsnr)
           {
@@ -399,6 +399,21 @@ public:
             msg( e_msg_level, "\n");
           }
         }
+#if UW_SSIM_INDEX_COMPUTATION
+        msg(e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-SSIM\n");
+        msg(e_msg_level, "\t %8d    %c "     "%12.4lf    "  "%8.4lf\n",
+          getNumPic(), cDelim,
+          getBits() * dScale,
+          getSSIM_Index(COMPONENT_Y) / (double)getNumPic()
+        );
+#endif
+#if UW_MS_SSIM_COMPUTATION
+        msg(e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-MS_SSIM\n");
+        msg(e_msg_level, "\t %8d    %c "  "%12.4lf    "  "%8.4lf\n",
+          getNumPic(), cDelim,
+          getBits() * dScale,
+          getMS_SSIM(COMPONENT_Y) / (double)getNumPic());
+#endif
         break;
       case CHROMA_420:
       case CHROMA_422:
@@ -416,7 +431,7 @@ public:
               msg( e_msg_level, "         \tTotal Frames |   "   "Bitrate     "  "Y-WPSNR   "  "U-WPSNR   "  "V-WPSNR   "  "YUV-WPSNR" );
             } else
 #endif
-            msg( e_msg_level, "         \tTotal Frames |   "   "Bitrate     "  "Y-PSNR    "  "U-PSNR    "  "V-PSNR    "  "YUV-PSNR " );
+            msg( e_msg_level, "         \tTotal Frames |   "   "Bitrate    "  "Y-PSNR    "  "U-PSNR    "  "V-PSNR    "  "YUV-PSNR " );
 
             if (printHexPsnr)
             {
@@ -425,11 +440,10 @@ public:
 
             if (printSequenceMSE)
             {
-              msg( e_msg_level, " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE \n" );
+              msg( e_msg_level, " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE\n" );
             }
-            else
-            {
-              msg( e_msg_level, "\n");
+            else {
+              msg(e_msg_level, "\n");
             }
 
             //msg( e_msg_level, "\t------------ "  " ----------"   " -------- "  " -------- "  " --------\n" );
@@ -473,10 +487,6 @@ public:
                      m_MSEyuvframe[COMPONENT_Cr] / (double)getNumPic(),
                      MSEyuv );
             }
-            else
-            {
-              msg( e_msg_level, "\n");
-            }
 
             msg( e_msg_level, "From MSE:\t %8d    %c "          "%12.4lf  "    "%8.4lf  "   "%8.4lf  "    "%8.4lf  "   "%8.4lf\n",
                    getNumPic(), cDelim,
@@ -494,7 +504,9 @@ public:
             } 
             else
 #endif
-            msg(e_msg_level, "\tTotal Frames |   "   "Bitrate     "  "Y-PSNR    "  "U-PSNR    "  "V-PSNR    "  "YUV-PSNR   " );
+            msg(e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-PSNR    "  "U-PSNR    "  "V-PSNR    "  "YUV-PSNR   " );
+
+
 
 #if JVET_O0756_CALCULATE_HDRMETRICS
             if (printHdrMetrics)
@@ -518,13 +530,11 @@ public:
 #endif
             if (printSequenceMSE)
             {
-              msg( e_msg_level, " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE \n" );
+              msg( e_msg_level, " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE\n" );
             }
-            else
-            {
-              msg( e_msg_level, "\n");
+            else {
+              msg(e_msg_level, "\n");
             }
-
             //msg( e_msg_level, "\t------------ "  " ----------"   " -------- "  " -------- "  " --------\n" );
             msg( e_msg_level, "\t %8d    %c "          "%12.4lf  "    "%8.4lf  "   "%8.4lf  "    "%8.4lf  "   "%8.4lf",
                    getNumPic(), cDelim,
@@ -603,10 +613,10 @@ public:
                      m_MSEyuvframe[COMPONENT_Cr] / (double)getNumPic(),
                      MSEyuv );
             }
-            else
-            {
-              msg( e_msg_level, "\n");
+            else {
+              msg(e_msg_level, "\n");
             }
+
             if( printRprPSNR )
             {
               double psnr[MAX_NUM_COMPONENT];
@@ -639,32 +649,32 @@ public:
 
 #if UW_SSIM_INDEX_COMPUTATION
           double SSIMyuv = MAX_DOUBLE;
-          SSIMyuv = getSSIM_Index(COMPONENT_Y)*4 + getSSIM_Index(COMPONENT_Cb) + getSSIM_Index(COMPONENT_Cr);
+          SSIMyuv = getSSIM_Index(COMPONENT_Y) * 4 + getSSIM_Index(COMPONENT_Cb) + getSSIM_Index(COMPONENT_Cr);
           SSIMyuv /= 6;
 
-          msg(e_msg_level, "\tTotal Frames |  "   "Bitrate    "  "Y-SSIM    "  "U-SSIM    "  "V-SSIM    "  "YUV-SSIM \n");
-          msg(e_msg_level, "\t %8d    %c"          "%12.4lf  "    "%8.4lf       "   "%8.4lf       "   "%8.4lf       "    "%8.4lf     \n",
+          msg(e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-SSIM    "  "U-SSIM    "  "V-SSIM    "  "YUV-SSIM\n");
+          msg(e_msg_level, "\t %8d    %c "     "%12.4lf  "  "%8.4lf  "   "%8.4lf  "   "%8.4lf  "   "%8.4lf\n",
             getNumPic(), cDelim,
             getBits() * dScale,
             getSSIM_Index(COMPONENT_Y) / (double)getNumPic(),
             getSSIM_Index(COMPONENT_Cb) / (double)getNumPic(),
             getSSIM_Index(COMPONENT_Cr) / (double)getNumPic(),
             SSIMyuv / (double)getNumPic()
-            );
+          );
 #endif
 #if UW_MS_SSIM_COMPUTATION
           double MS_SSIMyuv = MAX_DOUBLE;
           MS_SSIMyuv = getMS_SSIM(COMPONENT_Y) * 4 + getMS_SSIM(COMPONENT_Cb) + getMS_SSIM(COMPONENT_Cr);
           MS_SSIMyuv /= 6;
 
-          msg(e_msg_level, "\tTotal Frames |  "   "Bitrate    "  "Y-MS_SSIM      "  "U-MS_SSIM       "  "V-MS_SSIM \n");
-          msg(e_msg_level, "\t %8d    %c"          "%12.4lf  "    "%8.4lf       "    "%8.4lf       "    "%8.4lf       "     "%8.4lf  \n",
+          msg(e_msg_level, "\tTotal Frames |   "   "Bitrate    "  "Y-MS_SSIM    "  "U-MS_SSIM    "  "V-MS_SSIM    "  "YUV-MS_SSIM\n");
+          msg(e_msg_level, "\t %8d    %c "  "%12.4lf  "  "%8.4lf    "   "%8.4lf    "    "%8.4lf    "   "%8.4lf\n",
             getNumPic(), cDelim,
             getBits() * dScale,
             getMS_SSIM(COMPONENT_Y) / (double)getNumPic(),
             getMS_SSIM(COMPONENT_Cb) / (double)getNumPic(),
             getMS_SSIM(COMPONENT_Cr) / (double)getNumPic(),
-            SSIMyuv / (double)getNumPic());
+            MS_SSIMyuv / (double)getNumPic());
 #endif
 
         }
@@ -706,7 +716,6 @@ public:
               getPsnr(COMPONENT_Cr) / (double)getNumPic(),
               PSNRyuv );
 
-
           if (printSequenceMSE)
           {
             fprintf(pFile, "\t %f\t %f\t %f\t %f\n",
@@ -715,8 +724,7 @@ public:
                 m_MSEyuvframe[COMPONENT_Cr] / (double)getNumPic(),
                 MSEyuv );
           }
-          else
-          {
+          else {
             fprintf(pFile, "\n");
           }
 
@@ -724,7 +732,7 @@ public:
           double SSIMyuv = MAX_DOUBLE;
           SSIMyuv = getSSIM_Index(COMPONENT_Y) * 4 + getSSIM_Index(COMPONENT_Cb) + getSSIM_Index(COMPONENT_Cr);
           SSIMyuv /= 6;
-          fprintf(pFile, "%f\t %f\t %f\t %f\t %f\n",
+          fprintf(pFile, "\t %f\t %f\t %f\t %f\t %f\n",
             getBits() * dScale,
             getSSIM_Index(COMPONENT_Y) / (double)getNumPic(),
             getSSIM_Index(COMPONENT_Cb) / (double)getNumPic(),
@@ -735,7 +743,7 @@ public:
           double MS_SSIMyuv = MAX_DOUBLE;
           MS_SSIMyuv = getMS_SSIM(COMPONENT_Y) * 4 + getMS_SSIM(COMPONENT_Cb) + getMS_SSIM(COMPONENT_Cr);
           MS_SSIMyuv /= 6;
-          fprintf(pFile, "%f\t %f\t %f\t %f\t %f\n", 
+          fprintf(pFile, "\t %f\t %f\t %f\t %f\t %f\n",
             getBits() * dScale,
             getMS_SSIM(COMPONENT_Y) / (double)getNumPic(),
             getMS_SSIM(COMPONENT_Cb) / (double)getNumPic(),

@@ -3660,7 +3660,6 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       xCalculateMS_SSIM(pcPic, pcPic->getRecoBuf());
 #endif
 
-
       xWriteTrailingSEIMessages(trailingSeiMessages, accessUnit, pcSlice->getTLayer());
 
       printHash(m_pcCfg->getDecodedPictureHashSEIType(), digestStr);
@@ -4463,7 +4462,11 @@ void  EncGOP::xCalculateMS_SSIM(Picture* pcPic, PelUnitBuf cPicD)
     m_gcAnalyzeB.addResultMS_SSIM(dMS_SSIMval);
   }
 
-  msg(NOTICE, "[MS-SSIM Y %6.4lf    MS-SSIM U %6.4lf     MS-SSIM V %6.4lf]  ", dMS_SSIMval[COMPONENT_Y], dMS_SSIMval[COMPONENT_Cb], dMS_SSIMval[COMPONENT_Cr]);
+  double MS_SSIMyuv = MAX_DOUBLE;
+  MS_SSIMyuv = dMS_SSIMval[COMPONENT_Y] * 4 + dMS_SSIMval[COMPONENT_Cb] + dMS_SSIMval[COMPONENT_Cr];
+  MS_SSIMyuv /= 6;
+
+  msg(NOTICE, "[MS-SSIM Y %6.4lf    MS-SSIM U %6.4lf    MS-SSIM V %6.4lf    MS-SSIM YUV %6.4lf] ", dMS_SSIMval[COMPONENT_Y], dMS_SSIMval[COMPONENT_Cb], dMS_SSIMval[COMPONENT_Cr], MS_SSIMyuv);
 
 }
 
@@ -4627,7 +4630,6 @@ void EncGOP::xCalculateSSIM_Index(Picture* pcPic, PelUnitBuf cPicD)
 
   }
 
-
   //===== add result of SSIM =====
   m_gcAnalyzeAll.addResultSSIM_Index(m_dSSIMind);
 
@@ -4643,8 +4645,10 @@ void EncGOP::xCalculateSSIM_Index(Picture* pcPic, PelUnitBuf cPicD)
   {
     m_gcAnalyzeB.addResultSSIM_Index(m_dSSIMind);
   }
-
-  msg(NOTICE, "[SSIM Index Y %6.4lf    SSIM Index U %6.4lf     SSIM Index V %6.4lf]  ", m_dSSIMind[COMPONENT_Y], m_dSSIMind[COMPONENT_Cb], m_dSSIMind[COMPONENT_Cr]);
+  double SSIMyuv = MAX_DOUBLE;
+  SSIMyuv = m_dSSIMind[COMPONENT_Y] * 4 + m_dSSIMind[COMPONENT_Cb] + m_dSSIMind[COMPONENT_Cr];
+  SSIMyuv /= 6;
+  msg(NOTICE, "[SSIM Index Y %6.4lf    SSIM Index U %6.4lf    SSIM Index V %6.4lf    SSIM Index YUV %6.4lf] ", m_dSSIMind[COMPONENT_Y], m_dSSIMind[COMPONENT_Cb], m_dSSIMind[COMPONENT_Cr], SSIMyuv);
 
 }
 
@@ -4999,8 +5003,9 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
          c,
          pcSlice->getSliceQp(),
          uibits );
-
-    msg( NOTICE, " [Y %6.4lf dB    U %6.4lf dB    V %6.4lf dB]", dPSNR[COMPONENT_Y], dPSNR[COMPONENT_Cb], dPSNR[COMPONENT_Cr] );
+    double dPSNRyuv = (dPSNR[COMPONENT_Y] * 4 + dPSNR[COMPONENT_Cb] + dPSNR[COMPONENT_Cr]) / 6;
+    msg( NOTICE, " [Y %6.4lf dB    U %6.4lf dB    U %6.4lf dB    YUV %6.4lf dB]", 
+      dPSNR[COMPONENT_Y], dPSNR[COMPONENT_Cb], dPSNR[COMPONENT_Cr], dPSNRyuv);
 
 #if EXTENSION_360_VIDEO
     m_ext360.printPerPOCInfo(NOTICE);
